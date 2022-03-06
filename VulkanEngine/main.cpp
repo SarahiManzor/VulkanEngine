@@ -1,10 +1,11 @@
 #define GLFW_INCLUDE_VULKAN // This define is needed for glfw3.h to import vulkan/vulkan.h
 #include <GLFW/glfw3.h>
 
-#include <iostream>
-#include <stdexcept>
 #include <cstdlib>
 #include <inttypes.h>
+#include <iostream>
+#include <stdexcept>
+#include <vector>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -33,6 +34,29 @@ private:
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 	}
 
+	void hasExensions(const std::vector<VkExtensionProperties> &availableExtensions, const char** neededExtensions, int16_t neededExtensionsCount) {
+		std::cout << "Available extensions:\n";
+		for (const auto& extension : availableExtensions) {
+			std::cout << '\t' << extension.extensionName << '\n';
+		}
+
+		std::cout << "Needed extensions:\n";
+		for (auto i = 0; i < neededExtensionsCount; i++) {
+			const char *neededExtension = neededExtensions[i];
+			bool foundMatch = false;
+			for (const auto& extension : availableExtensions) {
+				if (strcmp(neededExtension, extension.extensionName)) {
+					std::cout << '\t' << neededExtension << " FOUND" << '\n';
+					foundMatch = true;
+					break;
+				}
+			}
+			if (!foundMatch) {
+				std::cout << '\t' << neededExtension << " NOT FOUND" << '\n';
+			}
+		}
+	}
+
 	void createInstance() {
 		// More about this struct here: https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VkApplicationInfo.html
 		VkApplicationInfo appInfo{};
@@ -43,6 +67,7 @@ private:
 		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 		appInfo.apiVersion = VK_API_VERSION_1_0;
 
+		// Create VKInstanceCreateInfo
 		VkInstanceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		createInfo.pApplicationInfo = &appInfo;
@@ -55,6 +80,14 @@ private:
 		createInfo.enabledExtensionCount = glfwExtensionCount;
 		createInfo.ppEnabledExtensionNames = glfwExtensions;
 		createInfo.enabledLayerCount = 0;
+
+		// Create VkInstance
+		uint32_t extensionCount = 0;
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+		std::vector<VkExtensionProperties> extensions(extensionCount);
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+
+		hasExensions(extensions, glfwExtensions, glfwExtensionCount);
 
 		if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create instance!");
@@ -72,6 +105,7 @@ private:
 	}
 
 	void cleanup() {
+		vkDestroyInstance(instance, nullptr);
 		glfwDestroyWindow(window);
 		glfwTerminate();
 	}
